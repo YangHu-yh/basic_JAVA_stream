@@ -2,9 +2,8 @@ package basicStreams;
 
 import java.time.LocalDate;
 import java.time.Month;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 //from  w  w  w  . j  ava  2 s .co  m
 public class employeeExample {
@@ -32,6 +31,7 @@ public class employeeExample {
     public static void sumAllIncomeExpenses(){
         double sum = Employee.persons()
                 .stream()
+                // or more precisely use: .mapToDouble(Employee::getIncome)
                 .map(Employee::getIncome)
                 .reduce(0.0, Double::sum);
         System.out.println("The total expenses on employees income: "+sum+".\n");
@@ -88,12 +88,86 @@ public class employeeExample {
                 .persons()
                 .stream()
                 .reduce((p1, p2) -> p1.getIncome() > p2.getIncome() ? p1 : p2);
+                // or use maxa() methods of the specific stream (apply to min() too)
+//                 .max(Comparator.comparingDouble(Employee::getIncome));
+
         if (person.isPresent()) {
             System.out.println("Highest earner: " + person.get());
         } else {
             System.out.println("Could not  get   the   highest earner.");
 
         }
+
+        // or use max() method of the DOubleStream
+        OptionalDouble income =
+                Employee.persons()
+                        .stream()
+                        .mapToDouble(Employee::getIncome)
+                        .max();
+        if (income.isPresent()) {
+            System.out.println("Highest income:   " + income.getAsDouble());
+        } else {
+            System.out.println("Could not  get   the   highest income.");
+        }
+    }
+
+    public static void countNumberOfEmployees(){
+        long personCount = Employee.persons().stream().count();
+        System.out.println("Number of employees: " + personCount);
+
+        // or use map()
+        personCount = Employee.persons()
+                .stream()
+                .mapToLong(p ->  1L)
+                .sum();
+        System.out.println("Use map() to count number of employees:");
+        System.out.println(personCount);
+
+        // or use map() and reduce()
+        personCount = Employee.persons()
+                .stream()
+                .map(p  ->  1L)
+                .reduce(0L,  Long::sum);
+        System.out.println("Use map() and reduce() to count number of employees:");
+        System.out.println(personCount);
+
+        // or use reduce()
+        personCount = Employee.persons()
+                .stream()
+                .reduce(0L, (partialCount,  person) ->  partialCount + 1L,  Long::sum);
+        System.out.println("Use reduce() to count number of employees:");
+        System.out.println(personCount);
+    }
+
+    public static void employeeStatistics(){
+        DoubleSummaryStatistics incomeStats = Employee.persons()
+                .stream()
+                .map(Employee::getIncome)
+                .collect(DoubleSummaryStatistics::new,
+                        DoubleSummaryStatistics::accept,
+                        DoubleSummaryStatistics::combine);
+
+                // or use Collectors.summarizingDouble instead of .map(...).collect(...);
+//                .collect(Collectors.summarizingDouble(Employee::getIncome));
+        System.out.println(incomeStats);
+    }
+
+    public static void groupByGenderDob(){
+        Map personsByGenderAndDobMonth
+                = Employee.persons()
+                .stream()
+                .collect(Collectors.groupingBy(Employee::getGender,
+                        Collectors.groupingBy(p ->  p.getDob().getMonth(),
+                                Collectors.mapping(Employee::getName,Collectors.joining(" & ")))));
+
+        System.out.println(personsByGenderAndDobMonth);
+    }
+
+    public static void groupByGenderIncomeStats(){    Map<Employee.Gender, DoubleSummaryStatistics>  incomeStatsByGender = Employee.persons()
+            .stream()//from  w  w  w . ja  v a 2  s  .c om
+            .collect(Collectors.groupingBy(Employee::getGender, Collectors.summarizingDouble(Employee::getIncome)));
+
+        System.out.println(incomeStatsByGender);
     }
 
     public static void main(String[] args) {
@@ -113,6 +187,17 @@ public class employeeExample {
 
         System.out.println("Find the highest earner by 'Optional':");
         highestEarnerByOptional();
+
+        countNumberOfEmployees();
+
+        System.out.println("\nStatistics of employees:");
+        employeeStatistics();
+
+        System.out.println("\nGrouping by gender, then group by dob:");
+        groupByGenderDob();
+
+        System.out.println("\nGrouping by gender, then show income stats:");
+        groupByGenderIncomeStats();
     }
 }
 
@@ -200,7 +285,7 @@ class Employee {
         Employee p5 = new Employee(5, "Jeny", Gender.FEMALE, LocalDate.of(1975,
                 Month.DECEMBER, 13), 1234.0);
         Employee p6 = new Employee(6, "Jason", Gender.MALE, LocalDate.of(1976,
-                Month.JUNE, 9), 3211.0);
+                Month.JULY, 9), 3211.0);
 
         List<Employee> persons = Arrays.asList(p1, p2, p3, p4, p5, p6);
 
